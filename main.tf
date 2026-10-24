@@ -9,6 +9,7 @@ variable env_prefix {}
 variable my_ip {}
 variable instance_type {}
 variable public_key_location {}
+variable private_key_location {}
 
 # Configure the AWS Provider
 resource "aws_vpc" "myapp-vpc" {
@@ -26,28 +27,6 @@ resource "aws_subnet" "myapp-subnet-1" {
         Name: "${var.env_prefix}-subnet-1"
     }
 }
-
-## configure a secondary Route Table
-/*
-resource "aws_route_table" "myapp-route-table" {
-    vpc_id = aws_vpc.myapp-vpc.id
-
-    route {
-        cidr_block = "0.0.0.0/0"
-        gateway_id = aws_internet_gateway.myapp-igw.id
-    }
-
-    tags = {
-        Name: "${var.env_prefix}-rtb"
-    }
-}
-
-resource "aws_route_table_association" "a-rtb-subnet" {
-    subnet_id = aws_subnet.myapp-subnet-1.id
-    route_table_id = aws_route_table.myapp-route-table.id
-}
-
-*/
 
 resource "aws_internet_gateway" "myapp-igw" {
     vpc_id = aws_vpc.myapp-vpc.id
@@ -139,9 +118,29 @@ resource "aws_instance" "myapp-server" {
     associate_public_ip_address = true
     key_name = aws_key_pair.ssh-key.key_name
 
-    user_data = file("entry-script.sh")
+    # user_data = file("entry-script.sh")
 
     user_data_replace_on_change = true
+
+    connection {
+        type = "ssh"
+        host = self.public_ip
+        user = "ec2-user"
+        private_key = file(var.private_key_location)
+    }
+
+    provisioner "file" {
+        source = "entry-script.sh"
+        destination = "/home/ec2-user/entry-script-on-ec2.sh"
+    }
+    
+    provisioner "remote-exec" {
+        scrpt ="entry-script.sh"
+    }
+
+    provisioner "local-exec" {
+        command = "echo ${self.public_ip} > output.txt"
+    }
 
     tags = {
         Name: "${var.env_prefix}-dev-server"
