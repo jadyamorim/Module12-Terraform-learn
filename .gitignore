@@ -7,3 +7,9 @@
 
 # tf variables files - may include sensitive data 
 *.tfvars
+
+# License file
+LICENSE.txt
+
+# Terraform executable
+terraform.exe
